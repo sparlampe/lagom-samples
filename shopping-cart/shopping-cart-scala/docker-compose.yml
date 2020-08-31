@@ -22,3 +22,8 @@ services:
       - "POSTGRES_PASSWORD=shopping_cart"
     ports:
       - "5432:5432"  # credentials (shopping_cart:shopping_cart)
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+    - "9411:9411"

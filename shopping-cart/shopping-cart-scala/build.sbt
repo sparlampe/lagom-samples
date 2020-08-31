@@ -41,17 +41,29 @@ lazy val `shopping-cart-api` = (project in file("shopping-cart-api"))
 
 lazy val `shopping-cart` = (project in file("shopping-cart"))
   .enablePlugins(LagomScala)
+  .enablePlugins(Cinnamon)
   .settings(
     libraryDependencies ++= Seq(
       lagomScaladslPersistenceJdbc,
       lagomScaladslKafkaBroker,
       lagomScaladslTestKit,
+      Cinnamon.library.cinnamonCHMetrics,
+      Cinnamon.library.cinnamonAkka,
+      Cinnamon.library.cinnamonAkkaTyped,
+      Cinnamon.library.cinnamonAkkaPersistence,
+      Cinnamon.library.cinnamonAkkaStream,
+      Cinnamon.library.cinnamonAkkaHttp,
+      Cinnamon.library.cinnamonOpenTracingZipkin,
+      Cinnamon.library.cinnamonOpenTracingJaeger,
       macwire,
       scalaTest,
       postgresDriver,
       lagomScaladslAkkaDiscovery,
       akkaDiscoveryKubernetesApi
-    )
+    ),
+    cinnamon in run := true,
+    cinnamon in test := true,
+    Test / run / javaOptions += "-Dconfig.resource=local-application.conf"
   )
   .settings(dockerSettings)
   .settings(lagomForkedTestSettings)

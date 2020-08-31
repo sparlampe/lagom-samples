@@ -119,3 +119,12 @@ curl -H "Content-Type: application/json" -d 4 -X POST http://localhost:9000/inve
 ```
 
 The inventory service consumes the `shopping-cart` topic from Kafka and decrements the inventory according to the events.
+
+
+
+# Start `shopping-cart` service in production mode, add an item to trigger tracing:
+
+```bash
+sbt clean "shopping-cart/test:runMain play.core.server.ProdServerStart"
+curl -H "Content-Type: application/json" -H "Trace-Debug: some-correlation-id" -d '{"itemId": "456", "quantity": 2}' -X POST http://localhost:9001/shoppingcart/1893
+```
