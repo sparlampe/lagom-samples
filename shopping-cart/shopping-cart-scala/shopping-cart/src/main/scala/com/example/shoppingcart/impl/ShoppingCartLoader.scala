@@ -17,7 +17,7 @@ import scala.concurrent.ExecutionContext
 class ShoppingCartLoader extends LagomApplicationLoader {
 
   override def load(context: LagomApplicationContext): LagomApplication =
-    new ShoppingCartApplication(context) with AkkaDiscoveryComponents
+    new ShoppingCartApplication(context) with LagomDevModeComponents
 
   override def loadDevMode(context: LagomApplicationContext): LagomApplication =
     new ShoppingCartApplication(context) with LagomDevModeComponents

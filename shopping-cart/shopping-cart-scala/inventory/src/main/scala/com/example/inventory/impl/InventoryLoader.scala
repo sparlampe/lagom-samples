@@ -11,7 +11,7 @@ import com.softwaremill.macwire._
 
 class InventoryLoader extends LagomApplicationLoader {
   override def load(context: LagomApplicationContext): LagomApplication =
-    new InventoryApplication(context) with AkkaDiscoveryComponents
+    new InventoryApplication(context) with LagomDevModeComponents
 
   override def loadDevMode(context: LagomApplicationContext): LagomApplication =
     new InventoryApplication(context) with LagomDevModeComponents

@@ -53,8 +53,8 @@ lazy val `shopping-cart` = (project in file("shopping-cart"))
       Cinnamon.library.cinnamonAkkaPersistence,
       Cinnamon.library.cinnamonAkkaStream,
       Cinnamon.library.cinnamonAkkaHttp,
+      Cinnamon.library.cinnamonOpenTracing,
       Cinnamon.library.cinnamonOpenTracingZipkin,
-      Cinnamon.library.cinnamonOpenTracingJaeger,
       macwire,
       scalaTest,
       postgresDriver,
@@ -78,16 +78,29 @@ lazy val `inventory-api` = (project in file("inventory-api"))
 
 lazy val inventory = (project in file("inventory"))
   .enablePlugins(LagomScala)
+  .enablePlugins(Cinnamon)
   .settings(
     libraryDependencies ++= Seq(
       lagomScaladslKafkaClient,
       lagomScaladslTestKit,
+      Cinnamon.library.cinnamonCHMetrics,
+      Cinnamon.library.cinnamonAkka,
+      Cinnamon.library.cinnamonAkkaTyped,
+      Cinnamon.library.cinnamonAkkaPersistence,
+      Cinnamon.library.cinnamonAkkaStream,
+      Cinnamon.library.cinnamonAkkaHttp,
+      Cinnamon.library.cinnamonOpenTracing,
+      Cinnamon.library.cinnamonOpenTracingZipkin,
       macwire,
       scalaTest,
       lagomScaladslAkkaDiscovery
-    )
+    ),
+    cinnamon in run := true,
+    cinnamon in test := true,
+    Test / run / javaOptions += "-Dconfig.resource=local-application.conf"
   )
   .settings(dockerSettings)
+  .settings(lagomForkedTestSettings)
   .dependsOn(`inventory-api`, `shopping-cart-api`)
 
 // The project uses PostgreSQL
@@ -96,3 +109,5 @@ lagomCassandraEnabled in ThisBuild := false
 // Use Kafka server running in a docker container
 lagomKafkaEnabled in ThisBuild := false
 lagomKafkaPort in ThisBuild := 9092
+
+resolvers in ThisBuild += "com-mvn" at "https://repo.lightbend.com/commercial-releases/"

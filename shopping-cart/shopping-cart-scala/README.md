@@ -122,9 +122,13 @@ The inventory service consumes the `shopping-cart` topic from Kafka and decremen
 
 
 
-# Start `shopping-cart` service in production mode, add an item to trigger tracing:
+# Start `shopping-cart` application in production mode, add an item and checkout a cart to trigger tracing:
 
 ```bash
-sbt clean "shopping-cart/test:runMain play.core.server.ProdServerStart"
-curl -H "Content-Type: application/json" -H "Trace-Debug: some-correlation-id" -d '{"itemId": "456", "quantity": 2}' -X POST http://localhost:9001/shoppingcart/1893
+docker-compose up -d
+sbt clean lagomServiceLocatorStart "shopping-cart/test:runMain play.core.server.ProdServerStart"
+sbt clean "inventory/test:runMain play.core.server.ProdServerStart"
+curl -H "Content-Type: application/json" -H "Trace-Debug: some-correlation-id" -d '{"itemId": "456", "quantity": 2}' -X POST http://localhost:9000/shoppingcart/1893
+curl -H "Content-Type: application/json" -H "Trace-Debug: some-debug-correlation-id" -POST http://localhost:9000/shoppingcart/1893/checkout
+curl -H "Content-Type: application/json" -H "Trace-Debug: some-debug-correlation-id" -GET http://localhost:9000/inventory/456
 ```
