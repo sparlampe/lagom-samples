@@ -67,7 +67,7 @@ class ShoppingCartEntitySpec extends ScalaTestWithActorTestKit(s"""
       probe.expectMessageType[ShoppingCart.Accepted]
 
       // Checkout shopping cart
-      shoppingCart ! ShoppingCart.Checkout(probe.ref)
+      shoppingCart ! ShoppingCart.Checkout(probe.ref, Map.empty)
       probe.receiveMessage() match {
         case ShoppingCart.Accepted(summary) => summary.checkedOut shouldBe true
         case ShoppingCart.Rejected(reason)  => fail(s"Message was rejected with reason: $reason")
@@ -149,7 +149,7 @@ class ShoppingCartEntitySpec extends ScalaTestWithActorTestKit(s"""
       probe.expectMessageType[ShoppingCart.Accepted]
 
       // Then checkout the shopping cart
-      shoppingCart ! ShoppingCart.Checkout(probe.ref)
+      shoppingCart ! ShoppingCart.Checkout(probe.ref, Map.empty)
       probe.expectMessageType[ShoppingCart.Accepted]
 
       // Then fail when adding new items
@@ -167,11 +167,11 @@ class ShoppingCartEntitySpec extends ScalaTestWithActorTestKit(s"""
       probe.expectMessageType[ShoppingCart.Accepted]
 
       // Then checkout the shopping cart
-      shoppingCart ! ShoppingCart.Checkout(probe.ref)
+      shoppingCart ! ShoppingCart.Checkout(probe.ref, Map.empty)
       probe.expectMessageType[ShoppingCart.Accepted]
 
       // Then fail to checkout again
-      shoppingCart ! ShoppingCart.Checkout(probe.ref)
+      shoppingCart ! ShoppingCart.Checkout(probe.ref, Map.empty)
       probe.expectMessage(ShoppingCart.Rejected("Cannot checkout a checked-out cart"))
     }
 
@@ -180,7 +180,7 @@ class ShoppingCartEntitySpec extends ScalaTestWithActorTestKit(s"""
       val shoppingCart = spawn(ShoppingCart(PersistenceId("ShoppingCart", randomId())))
 
       // Fail to checkout empty shopping cart
-      shoppingCart ! ShoppingCart.Checkout(probe.ref)
+      shoppingCart ! ShoppingCart.Checkout(probe.ref, Map.empty)
       probe.expectMessage(ShoppingCart.Rejected("Cannot checkout an empty shopping cart"))
     }
   }

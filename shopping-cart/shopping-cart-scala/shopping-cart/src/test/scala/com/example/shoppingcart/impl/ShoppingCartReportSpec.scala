@@ -130,7 +130,7 @@ class ShoppingCartReportSpec extends AnyWordSpec with BeforeAndAfterAll with Mat
       val updatedReport =
         for {
           _      <- feedEvent(cartId, ItemAdded("test3", 1))
-          _      <- feedEvent(cartId, CartCheckedOut(checkedOutTime))
+          _      <- feedEvent(cartId, CartCheckedOut(checkedOutTime, Map.empty))
           report <- reportRepository.findById(cartId)
         } yield report
 

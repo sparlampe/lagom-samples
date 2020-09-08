@@ -67,7 +67,7 @@ lazy val `shopping-cart` = (project in file("shopping-cart"))
   )
   .settings(dockerSettings)
   .settings(lagomForkedTestSettings)
-  .dependsOn(`shopping-cart-api`)
+  .dependsOn(`shopping-cart-api`, common)
 
 lazy val `inventory-api` = (project in file("inventory-api"))
   .settings(
@@ -101,7 +101,14 @@ lazy val inventory = (project in file("inventory"))
   )
   .settings(dockerSettings)
   .settings(lagomForkedTestSettings)
-  .dependsOn(`inventory-api`, `shopping-cart-api`)
+  .dependsOn(`inventory-api`, `shopping-cart-api`, common)
+
+lazy val common = (project in file("common"))
+  .settings(
+    libraryDependencies ++= Seq(
+      Cinnamon.library.cinnamonOpenTracing
+    )
+  )
 
 // The project uses PostgreSQL
 lagomCassandraEnabled in ThisBuild := false

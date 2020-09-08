@@ -43,7 +43,7 @@ object ShoppingCart {
 
   final case class AdjustItemQuantity(itemId: String, quantity: Int, replyTo: ActorRef[Confirmation]) extends Command
 
-  final case class Checkout(replyTo: ActorRef[Confirmation]) extends Command
+  final case class Checkout(replyTo: ActorRef[Confirmation], spanContext: Map[String,String]) extends Command
 
   final case class Get(replyTo: ActorRef[Summary]) extends Command
 
@@ -90,7 +90,7 @@ object ShoppingCart {
 
   final case class ItemQuantityAdjusted(itemId: String, newQuantity: Int) extends Event
 
-  final case class CartCheckedOut(eventTime: Instant) extends Event
+  final case class CartCheckedOut(eventTime: Instant, spanContext: Map[String,String]) extends Event
 
   // Events get stored and loaded from the database, hence a JSON format
   //  needs to be declared so that they can be serialized and deserialized.
@@ -144,7 +144,7 @@ final case class ShoppingCart(items: Map[String, Int], checkedOutTime: Option[In
         case AddItem(itemId, quantity, replyTo)            => onAddItem(itemId, quantity, replyTo)
         case RemoveItem(itemId, replyTo)                   => onRemoveItem(itemId, replyTo)
         case AdjustItemQuantity(itemId, quantity, replyTo) => onAdjustItemQuantity(itemId, quantity, replyTo)
-        case Checkout(replyTo)                             => onCheckout(replyTo)
+        case Checkout(replyTo, spanContext)                => onCheckout(replyTo, spanContext)
         case Get(replyTo)                                  => onGet(replyTo)
       }
     } else {
@@ -153,16 +153,16 @@ final case class ShoppingCart(items: Map[String, Int], checkedOutTime: Option[In
         case AddItem(_, _, replyTo)            => reply(replyTo)(Rejected("Cannot add an item to a checked-out cart"))
         case RemoveItem(_, replyTo)            => reply(replyTo)(Rejected("Cannot remove an item from a checked-out cart"))
         case AdjustItemQuantity(_, _, replyTo) => reply(replyTo)(Rejected("Cannot adjust item on a checked-out cart"))
-        case Checkout(replyTo)                 => reply(replyTo)(Rejected("Cannot checkout a checked-out cart"))
+        case Checkout(replyTo, _)              => reply(replyTo)(Rejected("Cannot checkout a checked-out cart"))
       }
     }
 
-  private def onCheckout(replyTo: ActorRef[Confirmation]): ReplyEffect[Event, ShoppingCart] = {
+  private def onCheckout(replyTo: ActorRef[Confirmation], spanContext: Map[String, String]): ReplyEffect[Event, ShoppingCart] = {
     if (items.isEmpty)
       Effect.reply(replyTo)(Rejected("Cannot checkout an empty shopping cart"))
     else
       Effect
-        .persist(CartCheckedOut(Instant.now()))
+        .persist(CartCheckedOut(Instant.now(), spanContext))
         .thenReply(replyTo)(updatedCart => Accepted(toSummary(updatedCart)))
   }
 
@@ -219,7 +219,7 @@ final case class ShoppingCart(items: Map[String, Int], checkedOutTime: Option[In
       case ItemAdded(itemId, quantity)            => onItemAddedOrUpdated(itemId, quantity)
       case ItemRemoved(itemId)                    => onItemRemoved(itemId)
       case ItemQuantityAdjusted(itemId, quantity) => onItemAddedOrUpdated(itemId, quantity)
-      case CartCheckedOut(checkedOutTime)         => onCartCheckedOut(checkedOutTime)
+      case CartCheckedOut(checkedOutTime,_)       => onCartCheckedOut(checkedOutTime)
     }
 
   private def onItemRemoved(itemId: String): ShoppingCart = copy(items = items - itemId)

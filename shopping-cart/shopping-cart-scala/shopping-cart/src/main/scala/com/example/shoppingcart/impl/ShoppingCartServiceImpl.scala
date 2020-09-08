@@ -22,6 +22,13 @@ import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import scala.concurrent.duration._
 import akka.util.Timeout
 import akka.cluster.sharding.typed.scaladsl.EntityRef
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import com.example.inventory.TracingUtils.{getCurrentSpanContext}
+import io.opentracing.{Scope, Span, SpanContext}
+import io.opentracing.propagation.{Format, TextMapAdapter}
+import io.opentracing.util.GlobalTracer
+import scala.jdk.CollectionConverters._
 
 /**
  * Implementation of the `ShoppingCartService`.
@@ -73,8 +80,9 @@ class ShoppingCartServiceImpl(
   }
 
   override def checkout(id: String): ServiceCall[NotUsed, ShoppingCartView] = ServiceCall { _ =>
+    val currentSpanContext =  getCurrentSpanContext
     entityRef(id)
-      .ask(replyTo => Checkout(replyTo))
+      .ask(replyTo => Checkout(replyTo, currentSpanContext))
       .map { confirmation =>
         confirmationToResult(id, confirmation)
       }
@@ -91,11 +99,13 @@ class ShoppingCartServiceImpl(
       persistentEntityRegistry
         .eventStream(tag, fromOffset)
         .filter(_.event.isInstanceOf[CartCheckedOut])
+        .map(_.asInstanceOf[EventStreamElement[CartCheckedOut]])
+        .via(new Extract)
         .mapAsync(4) {
           case EventStreamElement(id, _, offset) =>
             entityRef(id)
               .ask(reply => Get(reply))
-              .map(cart => convertShoppingCart(id, cart) -> offset)
+              .map(cart =>  convertShoppingCart(id, cart)-> offset)
         }
   }
 
@@ -113,4 +123,43 @@ class ShoppingCartServiceImpl(
       case None       => throw NotFound(s"Couldn't find a shopping cart report for $cartId")
     }
   }
+}
+
+
+class Extract extends GraphStage[FlowShape[EventStreamElement[CartCheckedOut], EventStreamElement[CartCheckedOut]]] {
+  val in = Inlet[EventStreamElement[CartCheckedOut]]("extract.in")
+  val out = Outlet[EventStreamElement[CartCheckedOut]]("extract.out")
+  override val shape = FlowShape(in, out)
+
+  override def initialAttributes: Attributes = Attributes.name("extract")
+
+  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
+    new GraphStageLogic(shape) with InHandler with OutHandler {
+      override def onPush(): Unit = {
+        val tracer = GlobalTracer.get()
+        val message = grab(in)
+        
+        val context: SpanContext = tracer.extract(
+          Format.Builtin.TEXT_MAP,
+          new TextMapAdapter(message.event.spanContext.asJava))
+
+        
+        val producerSpan: Span = tracer
+          .buildSpan("producer")
+          .asChildOf(context)
+          .start()
+
+        val producerScope: Scope = tracer
+          .activateSpan(producerSpan)
+
+        push(out, message)
+
+        producerSpan.finish()
+        producerScope.close()
+      }
+
+      override def onPull(): Unit = pull(in)
+
+      setHandlers(in, out, this)
+    }
 }
