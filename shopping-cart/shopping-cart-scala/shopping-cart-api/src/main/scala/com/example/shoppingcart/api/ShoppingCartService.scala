@@ -71,7 +71,7 @@ trait ShoppingCartService extends Service {
   /**
    * This gets published to Kafka.
    */
-  def shoppingCartTopic: Topic[ShoppingCartView]
+  def shoppingCartTopic: Topic[(Map[String, String], ShoppingCartView)]
 
   final override def descriptor = {
     import Service._
@@ -94,7 +94,7 @@ trait ShoppingCartService extends Service {
           // name as the partition key.
           .addProperty(
             KafkaProperties.partitionKeyStrategy,
-            PartitionKeyStrategy[ShoppingCartView](_.id)
+            PartitionKeyStrategy[(Map[String,String],ShoppingCartView)](_._2.id)
           )
       )
       .withAutoAcl(true)

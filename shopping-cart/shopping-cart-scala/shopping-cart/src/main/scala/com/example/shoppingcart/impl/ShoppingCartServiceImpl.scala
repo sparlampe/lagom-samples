@@ -22,6 +22,7 @@ import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import scala.concurrent.duration._
 import akka.util.Timeout
 import akka.cluster.sharding.typed.scaladsl.EntityRef
+import com.example.inventory.TracingUtils.{createCustomSpan, getCurrentSpanContext}
 
 /**
  * Implementation of the `ShoppingCartService`.
@@ -73,8 +74,9 @@ class ShoppingCartServiceImpl(
   }
 
   override def checkout(id: String): ServiceCall[NotUsed, ShoppingCartView] = ServiceCall { _ =>
+    val currentSpanContext =  getCurrentSpanContext
     entityRef(id)
-      .ask(replyTo => Checkout(replyTo))
+      .ask(replyTo => Checkout(replyTo, currentSpanContext))
       .map { confirmation =>
         confirmationToResult(id, confirmation)
       }
@@ -86,16 +88,18 @@ class ShoppingCartServiceImpl(
       case Rejected(reason)      => throw BadRequest(reason)
     }
 
-  override def shoppingCartTopic: Topic[ShoppingCartView] = TopicProducer.taggedStreamWithOffset(Event.Tag) {
+  override def shoppingCartTopic: Topic[(Map[String, String], ShoppingCartView)] = TopicProducer.taggedStreamWithOffset(Event.Tag) {
     (tag, fromOffset) =>
       persistentEntityRegistry
         .eventStream(tag, fromOffset)
         .filter(_.event.isInstanceOf[CartCheckedOut])
         .mapAsync(4) {
-          case EventStreamElement(id, _, offset) =>
+          case EventStreamElement(id, event: CartCheckedOut, offset) =>
             entityRef(id)
               .ask(reply => Get(reply))
-              .map(cart => convertShoppingCart(id, cart) -> offset)
+              .map(cart => createCustomSpan(event.spanContext, "producer"){ spanContext =>
+                (spanContext, convertShoppingCart(id, cart)) -> offset
+              })
         }
   }
 
