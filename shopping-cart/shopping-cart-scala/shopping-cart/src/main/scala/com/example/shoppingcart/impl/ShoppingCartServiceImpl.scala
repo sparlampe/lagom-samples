@@ -152,11 +152,12 @@ class Extract extends GraphStage[FlowShape[EventStreamElement[CartCheckedOut], E
           .asChildOf(context)
           .start()
 
-        val producerScope: Scope = tracer
-          .activateSpan(producerSpan)
-
+        val producerScope: Scope = tracer.activateSpan(producerSpan)
+        val mdcScope = org.slf4j.MDC.putCloseable("Trace-ID", GlobalTracer.get().activeSpan().context().toTraceId)
+        
         push(out, message)
-
+        
+        mdcScope.close()
         producerSpan.finish()
         producerScope.close()
       }

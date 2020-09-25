@@ -9,7 +9,6 @@ import com.lightbend.lagom.scaladsl.api.ServiceCall
 import com.example.inventory.api.InventoryService
 import com.example.shoppingcart.api.ShoppingCartView
 import com.example.shoppingcart.api.ShoppingCartService
-import io.opentracing.util.GlobalTracer
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
@@ -32,7 +31,7 @@ class InventoryServiceImpl(shoppingCartService: ShoppingCartService) extends Inv
     // not update inventory if we've already seen this shopping cart. But this is an in memory
     // inventory tracker anyway, so no need to be that careful.
       cart.items.foreach { item =>
-        log.info(s"${item.itemId} - decremented ${item.quantity} Trace-ID: ${GlobalTracer.get().activeSpan().context().toTraceId}")
+        log.info(s"${item.itemId} - decremented ${item.quantity}")
         getInventory(item.itemId).addAndGet(-item.quantity)
       }
     Done
