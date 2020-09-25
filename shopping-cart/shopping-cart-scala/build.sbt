@@ -55,6 +55,7 @@ lazy val `shopping-cart` = (project in file("shopping-cart"))
       Cinnamon.library.cinnamonAkkaHttp,
       Cinnamon.library.cinnamonOpenTracing,
       Cinnamon.library.cinnamonOpenTracingZipkin,
+      Cinnamon.library.cinnamonSlf4jMdc,
       macwire,
       scalaTest,
       postgresDriver,
@@ -63,7 +64,7 @@ lazy val `shopping-cart` = (project in file("shopping-cart"))
     ),
     cinnamon in run := true,
     cinnamon in test := true,
-    Test / run / javaOptions += "-Dconfig.resource=local-application.conf"
+    Test / run / javaOptions ++= Seq("-Dconfig.resource=local-application.conf", "-Dlogger.resource=logback-n.xml")
   )
   .settings(dockerSettings)
   .settings(lagomForkedTestSettings)
@@ -91,13 +92,14 @@ lazy val inventory = (project in file("inventory"))
       Cinnamon.library.cinnamonAkkaHttp,
       Cinnamon.library.cinnamonOpenTracing,
       Cinnamon.library.cinnamonOpenTracingZipkin,
+      Cinnamon.library.cinnamonSlf4jMdc,
       macwire,
       scalaTest,
       lagomScaladslAkkaDiscovery
     ),
     cinnamon in run := true,
     cinnamon in test := true,
-    Test / run / javaOptions += "-Dconfig.resource=local-application.conf"
+    Test / run / javaOptions ++= Seq("-Dconfig.resource=local-application.conf", "-Dlogger.resource=logback-n.xml")
   )
   .settings(dockerSettings)
   .settings(lagomForkedTestSettings)

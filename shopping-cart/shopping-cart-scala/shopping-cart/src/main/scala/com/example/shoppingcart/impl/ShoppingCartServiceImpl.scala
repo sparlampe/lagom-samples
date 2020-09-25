@@ -29,6 +29,7 @@ import io.opentracing.{Scope, Span, SpanContext}
 import io.opentracing.propagation.{Format, TextMapAdapter}
 import io.opentracing.util.GlobalTracer
 import scala.jdk.CollectionConverters._
+import org.slf4j.LoggerFactory
 
 /**
  * Implementation of the `ShoppingCartService`.
@@ -40,6 +41,7 @@ class ShoppingCartServiceImpl(
 )(implicit ec: ExecutionContext)
     extends ShoppingCartService {
 
+  val log = LoggerFactory.getLogger(getClass)
   /**
    * Looks up the shopping cart entity for the given ID.
    */
@@ -80,6 +82,7 @@ class ShoppingCartServiceImpl(
   }
 
   override def checkout(id: String): ServiceCall[NotUsed, ShoppingCartView] = ServiceCall { _ =>
+    log.info(s"$id - checking out cart")
     val currentSpanContext =  getCurrentSpanContext
     entityRef(id)
       .ask(replyTo => Checkout(replyTo, currentSpanContext))

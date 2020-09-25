@@ -9,9 +9,11 @@ import com.lightbend.lagom.scaladsl.api.ServiceCall
 import com.example.inventory.api.InventoryService
 import com.example.shoppingcart.api.ShoppingCartView
 import com.example.shoppingcart.api.ShoppingCartService
+import io.opentracing.util.GlobalTracer
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
+import org.slf4j.LoggerFactory
 
 /**
  * Implementation of the inventory service.
@@ -20,7 +22,7 @@ import scala.concurrent.Future
  * with more than one replicas, but it's enough to demonstrate things working.
  */
 class InventoryServiceImpl(shoppingCartService: ShoppingCartService) extends InventoryService {
-
+  val log = LoggerFactory.getLogger(getClass)
   private val inventory = TrieMap.empty[String, AtomicInteger]
 
   private def getInventory(itemId: String) = inventory.getOrElseUpdate(itemId, new AtomicInteger)
@@ -29,9 +31,10 @@ class InventoryServiceImpl(shoppingCartService: ShoppingCartService) extends Inv
     // Since this is at least once event handling, we really should track by shopping cart, and
     // not update inventory if we've already seen this shopping cart. But this is an in memory
     // inventory tracker anyway, so no need to be that careful.
-    cart.items.foreach { item =>
-      getInventory(item.itemId).addAndGet(-item.quantity)
-    }
+      cart.items.foreach { item =>
+        log.info(s"${item.itemId} - decremented ${item.quantity} Trace-ID: ${GlobalTracer.get().activeSpan().context().toTraceId}")
+        getInventory(item.itemId).addAndGet(-item.quantity)
+      }
     Done
   })
 
