@@ -122,13 +122,31 @@ The inventory service consumes the `shopping-cart` topic from Kafka and decremen
 
 
 
-# Start `shopping-cart` application in production mode, add an item and checkout a cart to trigger tracing:
+# Start `shopping-cart` application in production mode, add an item to a cart and checkout the cart to trigger tracing:
 
 ```bash
+docker-compose down
 docker-compose up -d
-sbt clean lagomServiceLocatorStart "shopping-cart/test:runMain play.core.server.ProdServerStart"
-sbt clean "inventory/test:runMain play.core.server.ProdServerStart"
-curl -H "Content-Type: application/json" -H "Trace-Debug: some-correlation-id" -d '{"itemId": "456", "quantity": 2}' -X POST http://localhost:9000/shoppingcart/1893
-curl -H "Content-Type: application/json" -H "Trace-Debug: some-debug-correlation-id" -POST http://localhost:9000/shoppingcart/1893/checkout
-curl -H "Content-Type: application/json" -H "Trace-Debug: some-debug-correlation-id" -GET http://localhost:9000/inventory/456
+sbt clean runAll       // bootstraps the db, then dev mode should be stopped as telemetry needs prod mode
+kill $(lsof -t -i:9000) //ctr+c does not always work, use 25521, 9003 and so on if the last shutdown was not clean and some port is "already taken" on the next app start
+sbt lagomServiceLocatorStart "shopping-cart/test:runMain play.core.server.ProdServerStart"
+sbt "inventory/test:runMain play.core.server.ProdServerStart"
+curl -H "Content-Type: application/json" -d '{"itemId": "456", "quantity": 2}' -X POST http://localhost:9000/shoppingcart/612
+curl -H "Content-Type: application/json" -H "X-Correlation-Id: some-correlation-id" -X POST http://localhost:9000/shoppingcart/612/checkout
+curl -X GET http://localhost:9000/inventory/456 //this needs to be run at least twice to see the change, also the case with the original version of the app
+```
+
+The result of the series of commands is that we have a trace that contains http request with the correlation id that was
+sent with `X-Correlation-Id` header, creation of the kafka message in the shopping-cart service and consumption of the message in the inventory service.
+![Trace spanning two services](CorrelationTaceSpansLogs.png)
+
+
+In addition, we have a log entry in the shopping cart service containing the trace id
+```
+[info] 2020-09-25 22:48:45,080 INFO  com.example.shoppingcart.impl.ShoppingCartServiceImpl [Trace-ID=cf3d68e73e007f44] - 612 - checking out cart
+```
+and a corresponding log entry in the inventory service containing the same trace id.
+```
+0-09-25 22:48:52,462 INFO  com.example.inventory.impl.InventoryServiceImpl [Trace-ID=cf3d68e73e007f44] - 456 - decremented 2
+
 ```
